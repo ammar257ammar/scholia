@@ -14,7 +14,6 @@ WORKDIR /scholia/
 
 
 RUN git clone https://github.com/ammar257ammar/scholia.git .
-COPY scripts/startScholia.sh .
 RUN chmod +x startScholia.sh
 
 RUN pip3 install -r requirements.txt

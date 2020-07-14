@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+	<title>Wikidata Query Service - Result Views</title>
+
+	<link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/embed.style.min.css') }}">
+	
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+
+	<script src="{{ url_for('static',filename='js/shim.min.js') }}"></script>
+
+</head>
+<body>
+
+    <div id="result"></div>
+	
+	<script type="text/javascript">
+
+    (function($) {
+        
+	$(document).ready(function() {
+
+	  var formatter = new wikibase.queryService.ui.resultBrowser.helper.FormatterHelper();
+	  formatter.formatValue = function( data ){
+		  return 'This is my formatter:' + JSON.stringify( data );
+	  };
+	  
+	  var result = new wikibase.queryService.ui.resultBrowser.{{type}}();
+	  result.setFormatter( formatter );
+	  result.setResult({{ data | safe }});
+	  result.draw( $('#result') );
+	  
+	});
+    })(jQuery);
+
+	</script>
+	
+	<script src="{{ url_for('static',filename='js/embed.vendor.min.js') }}"></script>
+	<script src="{{ url_for('static',filename='js/embed.wdqs.min.js') }}"></script>
+	
+</body>
+</html>

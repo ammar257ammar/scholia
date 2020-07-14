@@ -7,6 +7,7 @@ from flask import Flask
 from flask_bootstrap import Bootstrap, StaticCDN
 
 from flask_caching import Cache
+from scholia.app.extensions import cache
 
 from ..text import load_text_to_topic_q_text
 
@@ -37,14 +38,14 @@ def create_app(text_to_topic_q_text_enabled=True, third_parties_enabled=False):
     config = {
     "DEBUG": True,          # some Flask specific configs
     "CACHE_TYPE": "filesystem", # Flask-Caching related configs
-    "CACHE_DEFAULT_TIMEOUT": 3000,
+    "CACHE_DEFAULT_TIMEOUT": 3600,
     "CACHE_DIR": "/cache"
     }
     app = Flask(__name__)
     
     app.config.from_mapping(config)
     
-    cache = Cache(app)
+    cache.init_app(app, config)
 
     Bootstrap(app)
 

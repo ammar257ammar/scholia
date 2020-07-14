@@ -9,7 +9,7 @@ RUN apt-get -y install python3-pip
 
 RUN apt-get install telnet
 
-RUN mkdir /scholia/
+RUN mkdir /scholia/ && mkdir /cache && chmod 755 /cache
 WORKDIR /scholia/
 
 

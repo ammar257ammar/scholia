@@ -199,6 +199,7 @@ def show_arxiv_to_quickstatements():
 
 
 @main.route('/author/' + q_pattern)
+@cache.cached(timeout=3600)
 def show_author(q):
     """Return HTML rendering for specific author.
 

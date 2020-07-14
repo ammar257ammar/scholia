@@ -1015,7 +1015,7 @@ def iframe_show_co_authors(q):
         cache.set(q+"CoAuthors", data, 86400)
 
     res_len = len(data['results']['bindings'])
-    res_slice = slice(res_len-1000,res_len)
+    res_slice = slice(res_len-500,res_len)
     
     data['results']['bindings'] = data['results']['bindings'][res_slice]
 
@@ -1039,7 +1039,7 @@ def iframe_show_authors_advisors(q):
         cache.set(q+"AuthorsAdvisors", data, 86400)
 
     res_len = len(data['results']['bindings'])
-    res_slice = slice(res_len-1000,res_len)
+    res_slice = slice(res_len-500,res_len)
     
     data['results']['bindings'] = data['results']['bindings'][res_slice]
 
@@ -1083,7 +1083,7 @@ def iframe_show_most_cited(q):
         cache.set(q+"MostCited", data, 86400)
 
     res_len = len(data['results']['bindings'])
-    res_slice = slice(res_len-1000,res_len)
+    res_slice = slice(res_len-2000,res_len)
     
     data['results']['bindings'] = data['results']['bindings'][res_slice]
 

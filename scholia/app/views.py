@@ -984,19 +984,26 @@ def iframe_show_author_citations(q):
     uri = "https://query.wikidata.org/sparql?format=json&query=SELECT%20%3Fyear%20%28SUM%28%3Fcitations_per_author_%29%20AS%20%3Fcitations_per_author%29%20%3FresearcherLabel%0AWITH%20%7B%0A%20%20%23%20Find%20researchers%20affiliated%20with%20the%20organization%0A%20%20SELECT%20DISTINCT%20%3Fresearcher%20WHERE%20%7B%0A%20%20%20%20%3Fresearcher%20wdt%3AP108%20%7C%20wdt%3AP463%20%7C%20wdt%3AP1416%2Fwdt%3AP361%2a%20wd%3A"+q+"%20.%0A%20%20%7D%0A%7D%20AS%20%25researchers%20%0AWITH%20%7B%0A%20%20%23%20Find%20works%20of%20the%20researchers%20and%20count%20the%20number%20of%20citations%0A%20%20SELECT%0A%20%20%20%20%3Fresearcher%20%3Fwork%20%3Fyear%20%28COUNT%28DISTINCT%20%3Fciting_work%29%20%2F%20COUNT%28DISTINCT%20%3Fresearcher_of_paper%29%20AS%20%3Fcitations_per_author_%29%0A%20%20WHERE%20%7B%0A%20%20%20%20INCLUDE%20%25researchers%0A%20%20%20%20%3Fwork%20wdt%3AP50%20%7C%20wdt%3AP2093%20%3Fresearcher_of_paper%20.%0A%20%20%20%20%3Fwork%20wdt%3AP50%20%3Fresearcher%20.%0A%20%20%20%20%3Fciting_work%20wdt%3AP2860%20%3Fwork%20.%0A%20%20%20%20%3Fwork%20wdt%3AP577%20%3Fdate%20.%20%0A%20%20%20%20BIND%28STR%28YEAR%28%3Fdate%29%29%20AS%20%3Fyear%29%0A%20%20%7D%0A%20%20GROUP%20BY%20%3Fwork%20%3Fresearcher%20%3Fyear%0A%7D%20AS%20%25counts%0AWHERE%20%7B%0A%20%20%23%20Label%20the%20results%0A%20%20INCLUDE%20%25counts%20%20%20%20%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%2Cda%2Cde%2Ces%2Cfr%2Cjp%2Cnl%2Cno%2Cru%2Csv%2Czh%22.%20%7D%0A%7D%0AGROUP%20BY%20%3Fyear%20%3Fresearcher%20%3FresearcherLabel%0AORDER%20BY%20%3Fyear%0A"
     
     data = cache.get(q+"Citations3")
+    error = ""
     
     if data is None:
         try:
             rawResponse = requests.get(uri)
         except requests.ConnectionError:
-           return "Connection Error"  
-        jsonResponse = rawResponse.text
-        data = json.loads(jsonResponse)
-        cache.set(q+"Citations3", data, 86400)
+            error = "Connection Error"
+           
+        try:
+            jsonResponse = rawResponse.text
+            data = json.loads(jsonResponse)
+            cache.set(q+"Citations3", data, 86400)
+        except json.decoder.JSONDecodeError:
+            error = "Query timeout!! Please refresh the page." 
 
-    data['results']['bindings'] = [x for x in data['results']['bindings'] if int(x['year']['value']) > 2017]
+    if not error:
+        
+        data['results']['bindings'] = [x for x in data['results']['bindings'] if int(x['year']['value']) > 2017]
 
-    return render_template("iframes/organization.html", data=data, type="BarChartResultBrowser")
+    return render_template("iframes/organization.html", data=data, error=error, type="BarChartResultBrowser")
     
 @main.route('/orgCoAuthors/' + q_pattern)
 def iframe_show_co_authors(q):
@@ -1004,22 +1011,29 @@ def iframe_show_co_authors(q):
     uri = "https://query.wikidata.org/sparql?format=json&query=SELECT%0A%20%20%3Fauthor1%20%3Fauthor1Label%20%3Fimage1%20%3Frgb%0A%20%20%3Fauthor2%20%3Fauthor2Label%20%3Fimage2%20%0AWITH%20%7B%0A%20%20SELECT%0A%20%20%20%20%3Fauthor1%20%28SAMPLE%28%3Fimage1_%29%20AS%20%3Fimage1%29%0A%20%20%20%20%3Fauthor2%20%28SAMPLE%28%3Fimage2_%29%20AS%20%3Fimage2%29%0A%20%20%20%20%28SAMPLE%28%3Frgb_%29%20AS%20%3Frgb%29%0A%20%20WHERE%20%7B%0A%20%20%20%20wd%3A"+q+"%20%5Ewdt%3AP361%2a%20%2F%20%5E%28%20wdt%3AP108%20%7C%20wdt%3AP1416%20%7C%20wdt%3AP463%20%29%20%3Fauthor1%20%2C%20%3Fauthor2%20.%20%0A%20%20%20%20%3Fwork%20wdt%3AP50%20%3Fauthor1%20%2C%20%3Fauthor2%20.%0A%0A%20%20%20%20%23%20Only%20display%20co-authorship%20for%20certain%20types%20of%20documents%0A%20%20%20%20%23%20Journal%20and%20conference%20articles%2C%20books%2C%20not%20%28yet%3F%29%20software%0A%20%20%20%20VALUES%20%3Fpublication_type%20%7B%20wd%3AQ13442814%20wd%3AQ571%20wd%3AQ26973022%20wd%3AQ17928402%20wd%3AQ947859%20wd%3AQ54670950%20%7D%0A%20%20%20%20FILTER%20EXISTS%20%7B%20%3Fwork%20wdt%3AP31%20%3Fpublication_type%20.%20%7D%0A%0A%20%20%20%20%23%20No%20self-links.%0A%20%20%20%20FILTER%20%28%3Fauthor1%20%21%3D%20%3Fauthor2%29%0A%0A%20%20%20%20%23%20Images%0A%20%20%20%20OPTIONAL%20%7B%20%3Fauthor1%20wdt%3AP18%20%3Fimage1_%20%7D%0A%20%20%20%20OPTIONAL%20%7B%20%3Fauthor2%20wdt%3AP18%20%3Fimage2_%20%7D%0A%0A%20%20%20%20%23%20Coloring%20of%20the%20nodes%0A%20%20%20%20BIND%28%22FFFFFF%22%20AS%20%3Frgb_%29%0A%20%20%7D%0A%20%20GROUP%20BY%20%3Fauthor1%20%3Fauthor2%0A%7D%20AS%20%25result%0AWHERE%20%7B%0A%20%20INCLUDE%20%25result%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%2Cda%2Cde%2Ces%2Cfr%2Cjp%2Csv%2Cru%2Czh%22.%0A%20%20%7D%0A%7D%0A"
     
     data = cache.get(q+"CoAuthors")
+    error = "";
     
     if data is None:
         try:
             rawResponse = requests.get(uri)
         except requests.ConnectionError:
-           return "Connection Error"  
-        jsonResponse = rawResponse.text
-        data = json.loads(jsonResponse)
-        cache.set(q+"CoAuthors", data, 86400)
+           error = "Connection Error"
+           
+        try:
+            jsonResponse = rawResponse.text
+            data = json.loads(jsonResponse)
+            cache.set(q+"CoAuthors", data, 86400)
+        except json.decoder.JSONDecodeError:
+            error = "Query timeout!! Please refresh the page." 
 
-    res_len = len(data['results']['bindings'])
-    res_slice = slice(res_len-500,res_len)
+    if not error:
     
-    data['results']['bindings'] = data['results']['bindings'][res_slice]
+        res_len = len(data['results']['bindings'])
+        res_slice = slice(res_len-500,res_len)
+    
+        data['results']['bindings'] = data['results']['bindings'][res_slice]
 
-    return render_template("iframes/organization.html", data=data, type="GraphResultBrowser")
+    return render_template("iframes/organization.html", data=data, error=error, type="GraphResultBrowser")
     
     
 @main.route('/orgAuthorsAdvisors/' + q_pattern)
@@ -1028,22 +1042,28 @@ def iframe_show_authors_advisors(q):
     uri = "https://query.wikidata.org/sparql?format=json&query=SELECT%20%3Fauthor1%20%3Fauthor1Label%20%3Frgb%20%3Fauthor2%20%3Fauthor2Label%20%0AWITH%20%7B%0A%20%20SELECT%20%3Fauthor1%20%3Fauthor2%20%3Frgb%20WHERE%20%7B%0A%20%20%20%20%7B%20%3Fauthor1%20wdt%3AP108%20wd%3A"+q+"%20.%20%7D%20union%20%7B%20%3Fauthor1%20wdt%3AP1416%20%5B%20wdt%3AP361%2a%20wd%3A"+q+"%20%5D%20.%20%20%7D%0A%20%20%20%20%7B%20%3Fauthor2%20wdt%3AP108%20wd%3A"+q+"%20.%20%7D%20union%20%7B%20%3Fauthor2%20wdt%3AP1416%20%5B%20wdt%3AP361%2a%20wd%3A"+q+"%20%5D%20.%20%20%7D%0A%20%20%20%20%7B%3Fauthor1%20wdt%3AP184%20%3Fauthor2%20%7D%0A%20%20%20%20UNION%0A%20%20%20%20%7B%3Fauthor2%20wdt%3AP185%20%3Fauthor1%20%7D%0A%20%20%20%20%3Fauthor1%20wdt%3AP21%20%3Fgender1%20.%20%0A%20%20%20%20BIND%20%28%20IF%28%3Fgender1%20%3D%20wd%3AQ6581097%2C%20%223182BD%22%2C%20%22E6550D%22%29%20AS%20%3Frgb%29%0A%20%20%7D%0A%7D%20AS%20%25result%0AWHERE%20%7B%0A%20%20INCLUDE%20%25result%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%2Cda%2Cde%2Ces%2Cfr%2Cjp%2Csv%2Cru%2Czh%22.%0A%20%20%7D%0A%7D%0A"
     
     data = cache.get(q+"AuthorsAdvisors")
+    error = ""
     
     if data is None:
         try:
             rawResponse = requests.get(uri)
         except requests.ConnectionError:
-           return "Connection Error"  
-        jsonResponse = rawResponse.text
-        data = json.loads(jsonResponse)
-        cache.set(q+"AuthorsAdvisors", data, 86400)
+            error = "Connection Error"
+           
+        try:
+            jsonResponse = rawResponse.text
+            data = json.loads(jsonResponse)
+            cache.set(q+"AuthorsAdvisors", data, 86400)
+        except json.decoder.JSONDecodeError:
+            error = "Query timeout!! Please refresh the page." 
 
-    res_len = len(data['results']['bindings'])
-    res_slice = slice(res_len-500,res_len)
+    if not error:
+        res_len = len(data['results']['bindings'])
+        res_slice = slice(res_len-500,res_len)
     
-    data['results']['bindings'] = data['results']['bindings'][res_slice]
+        data['results']['bindings'] = data['results']['bindings'][res_slice]
 
-    return render_template("iframes/organization.html", data=data, type="GraphResultBrowser")
+    return render_template("iframes/organization.html", data=data, error=error, type="GraphResultBrowser")
     
 @main.route('/orgPageProduction/' + q_pattern)
 def iframe_show_page_production(q):
@@ -1051,19 +1071,26 @@ def iframe_show_page_production(q):
     uri = "https://query.wikidata.org/sparql?format=json&query=SELECT%0A%20%20%3Fyear%0A%20%20%28SUM%28%3Fpages_per_author%29%20AS%20%3Fnumber_of_pages%29%0A%20%20%3Fresearcher_label%0AWHERE%20%7B%0A%20%20%7B%0A%20%20%20%20SELECT%0A%20%20%20%20%20%20%3Fresearcher_label%20%3Fwork%20%3Fyear%0A%20%20%20%20%20%20%28SAMPLE%28%3Fpages%29%20%2F%20COUNT%28%3Fresearcher_of_paper%29%20AS%20%3Fpages_per_author%29%0A%20%20%20%20WHERE%20%7B%0A%20%20%20%20%20%20%23%20Find%20authors%20associated%20with%20organization%0A%20%20%20%20%20%20FILTER%20EXISTS%20%7B%20%3Fresearcher%20wdt%3AP108%20%7C%20wdt%3AP463%20%7C%20%28wdt%3AP1416%20%2F%20wdt%3AP361%2a%29%20wd%3A"+q+"%20.%20%7D%0A%20%20%20%20%20%20%0A%20%20%20%20%20%20%3Fwork%20%28wdt%3AP50%7Cwdt%3AP2093%29%20%3Fresearcher_of_paper%20.%0A%20%20%20%20%20%20%0A%20%20%20%20%20%20%23%20Disabled%20to%20only%20look%20on%20scholarly%20articles%0A%20%20%20%20%20%20%23%20%3Fwork%20wdt%3AP31%20wd%3AQ13442814%20.%0A%20%20%20%20%20%20%0A%20%20%20%20%20%20%3Fwork%20wdt%3AP50%20%3Fresearcher%20.%0A%20%20%20%20%20%20%3Fwork%20wdt%3AP1104%20%3Fpages%20.%0A%20%20%20%20%20%20%3Fwork%20wdt%3AP577%20%3Fdate%20.%20%0A%20%20%20%20%20%20BIND%28STR%28YEAR%28%3Fdate%29%29%20AS%20%3Fyear%29%20%0A%20%20%20%20%20%20%3Fresearcher%20rdfs%3Alabel%20%3Fresearcher_label%20.%20FILTER%28LANG%28%3Fresearcher_label%29%20%3D%20%27en%27%29%0A%20%20%20%20%7D%20%0A%20%20%20%20GROUP%20BY%20%3Fwork%20%3Fresearcher_label%20%3Fyear%0A%20%20%7D%0A%7D%0AGROUP%20BY%20%3Fyear%20%3Fresearcher_label%20%0AORDER%20BY%20%3Fyear"
     
     data = cache.get(q+"PageProduction")
+    error = ""
     
     if data is None:
         try:
             rawResponse = requests.get(uri)
         except requests.ConnectionError:
-           return "Connection Error"  
-        jsonResponse = rawResponse.text
-        data = json.loads(jsonResponse)
-        cache.set(q+"PageProduction", data, 86400)
+           error = "Connection Error"
+           
+        try:
+            jsonResponse = rawResponse.text
+            data = json.loads(jsonResponse)
+            cache.set(q+"PageProduction", data, 86400)
+        except json.decoder.JSONDecodeError:
+            error = "Query timeout!! Please refresh the page."
     
-    data['results']['bindings'] = [x for x in data['results']['bindings'] if int(x['year']['value']) > 2017]
+    if not error:
+        
+        data['results']['bindings'] = [x for x in data['results']['bindings'] if int(x['year']['value']) > 2017]
 
-    return render_template("iframes/organization.html", data=data, type="BarChartResultBrowser")
+    return render_template("iframes/organization.html", data=data, error=error, type="BarChartResultBrowser")
     
 
 @main.route('/orgMostCited/' + q_pattern)
@@ -1072,22 +1099,28 @@ def iframe_show_most_cited(q):
     uri = "https://query.wikidata.org/sparql?format=json&query=SELECT%0A%20%20%3Fcount%20%3Fwork%20%3FworkLabel%0AWITH%20%7B%0A%20%20%23%20Find%20researchers%20associated%20with%20the%20organization%20and%20count%0A%20%20%23%20the%20number%20of%20citations.%0A%20%20SELECT%0A%20%20%20%20%28COUNT%28DISTINCT%20%3Fciting_work%29%20AS%20%3Fcount%29%0A%20%20%20%20%3Fwork%0A%20%20WHERE%20%7B%0A%20%20%20%20%3Fresearcher%20wdt%3AP108%20%7C%20wdt%3AP463%20%7C%20%28wdt%3AP1416%20%2F%20wdt%3AP361%2a%29%20wd%3A"+q+"%20.%0A%20%20%20%20%3Fwork%20p%3AP50%20%3Fresearcher_statement%20.%0A%20%20%20%20%3Fresearcher_statement%20ps%3AP50%20%3Fresearcher%20.%0A%20%20%20%20%3Fresearcher_statement%20pq%3AP1545%20%221%22%20.%0A%20%20%20%20%3Fciting_work%20wdt%3AP2860%20%3Fwork%20.%0A%20%20%7D%0A%20%20GROUP%20BY%20%3Fwork%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%0A%20%20ORDER%20BY%20DESC%28%3Fcount%29%0A%20%20LIMIT%2020%0A%7D%20AS%20%25works%0AWHERE%20%7B%0A%20%20%23%20Label%20the%20works%0A%20%20INCLUDE%20%25works%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%0A%20%20%20%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%2Cda%2Cde%2Ces%2Cfr%2Cjp%2Cnl%2Cno%2Cru%2Csv%2Czh%22%20.%0A%20%20%7D%0A%7D%0AORDER%20BY%20DESC%28%3Fcount%29"
     
     data = cache.get(q+"MostCited")
+    error = ""
     
     if data is None:
         try:
             rawResponse = requests.get(uri)
         except requests.ConnectionError:
-           return "Connection Error"  
-        jsonResponse = rawResponse.text
-        data = json.loads(jsonResponse)
-        cache.set(q+"MostCited", data, 86400)
+           error = "Connection Error"
+           
+        try:
+            jsonResponse = rawResponse.text
+            data = json.loads(jsonResponse)
+            cache.set(q+"MostCited", data, 86400)
+        except json.decoder.JSONDecodeError:
+            error = "Query timeout!! Please refresh the page."
 
-    res_len = len(data['results']['bindings'])
-    res_slice = slice(res_len-2000,res_len)
+    if not error:
+        res_len = len(data['results']['bindings'])
+        res_slice = slice(res_len-2000,res_len)
     
-    data['results']['bindings'] = data['results']['bindings'][res_slice]
+        data['results']['bindings'] = data['results']['bindings'][res_slice]
 
-    return render_template("iframes/organization.html", data=data, type="BubbleChartResultBrowser")
+    return render_template("iframes/organization.html", data=data, error=error, type="BubbleChartResultBrowser")
 
 
 @main.route('/organization/')

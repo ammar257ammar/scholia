@@ -23,16 +23,23 @@
         
 	$(document).ready(function() {
 
-	  var formatter = new wikibase.queryService.ui.resultBrowser.helper.FormatterHelper();
-	  formatter.formatValue = function( data ){
-		  return 'This is my formatter:' + JSON.stringify( data );
-	  };
-	  
-	  var result = new wikibase.queryService.ui.resultBrowser.{{type}}();
-	  result.setFormatter( formatter );
-	  result.setResult({{ data | safe }});
-	  result.draw( $('#result') );
-	  
+        {% if not error %}
+            
+            var formatter = new wikibase.queryService.ui.resultBrowser.helper.FormatterHelper();
+            formatter.formatValue = function( data ){
+              return 'This is my formatter:' + JSON.stringify( data );
+            };
+            
+            var result = new wikibase.queryService.ui.resultBrowser.{{type}}();
+            result.setFormatter( formatter );
+            result.setResult({{ data | safe }});
+            result.draw( $('#result') );
+            
+        {% else %}
+        
+            $('body').append("<h2>{{error}}</h2>");
+            
+        {% endif %}
 	});
     })(jQuery);
 

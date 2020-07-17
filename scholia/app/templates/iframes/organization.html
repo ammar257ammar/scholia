@@ -35,6 +35,7 @@
             result.setResult({{ data | safe }});
             result.draw( $('#result') );
             
+            $('body').append('<div id="finished"></div>');
         {% else %}
         
             $('body').append("<h2>{{error}}</h2>");

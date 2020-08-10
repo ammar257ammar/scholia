@@ -4,167 +4,17 @@
 {{super()}}
 
 <script type="text/javascript">
- employeesAndAffiliatedSparql = `
-SELECT
-  (SAMPLE(?number_of_works_) AS ?works)
-  (SAMPLE(?wikis_) AS ?wikis)
-  ?researcher ?researcherLabel ?researcherDescription
-  (SAMPLE(?orcid_) AS ?orcid)
-WITH {
-  SELECT DISTINCT ?researcher WHERE {
-    ?researcher ( wdt:P108 | wdt:P463 | wdt:P1416 ) / wdt:P361* wd:{{ q }} . 
-  } 
-} AS %researchers
-WITH {
-  SELECT
-    (COUNT(?work) AS ?number_of_works_) ?researcher
-  WHERE {
-    INCLUDE %researchers
-    OPTIONAL { ?work wdt:P50 ?researcher . }
-  } 
-  GROUP BY ?researcher
-} AS %researchers_and_number_of_works
-WHERE {
-  INCLUDE %researchers_and_number_of_works
-  OPTIONAL { ?researcher wdt:P496 ?orcid_ . }
-  OPTIONAL { ?researcher wikibase:sitelinks ?wikis_ }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "en,da,de,es,fr,nl,no,ru,sv,zh" . } 
-}
-GROUP BY ?researcher ?researcherLabel ?researcherDescription 
-ORDER BY DESC(?works)
- `;
-
- topicsSparql = `
-SELECT
-  ?researchers
-  ?topic ?topicLabel
-  ("🔎" AS ?zoom)
-  (CONCAT("{{ q }}/topic/", SUBSTR(STR(?topic), 32)) AS ?zoomUrl)
-  ?topicDescription
-  ?samplework ?sampleworkLabel
-WITH {
-  SELECT DISTINCT ?researcher WHERE {
-    ?researcher ( wdt:P108 | wdt:P463 | wdt:P1416 ) / wdt:P361* wd:{{ q }} . 
-  } 
-} AS %researchers
-WITH {
-  SELECT DISTINCT ?topic
-    (COUNT(DISTINCT ?researcher) AS ?researchers)
-    (SAMPLE(?work) AS ?samplework)
-  WHERE {
-    INCLUDE %researchers
-    ?work wdt:P50 ?researcher . 
-    ?work wdt:P921 ?topic . 
-  } 
-  GROUP BY ?topic
-  ORDER BY DESC(?researchers)
-  LIMIT 500
-} AS %works_and_number_of_researchers
-WHERE {
-  INCLUDE %works_and_number_of_researchers
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "en,da,de,es,fr,nl,no,ru,sv,zh" . } 
-}
-GROUP BY ?researchers ?topic ?topicLabel ?topicDescription ?samplework ?sampleworkLabel
-ORDER BY DESC(?researchers)
-   `;
-
- recentPublicationsSparql = `
-#defaultView:Table
-SELECT
-  ?publication_date
-  ?work ?workLabel
-  ?researchers ?researchersUrl
-WITH {
-  SELECT 
-    (MIN(?publication_datetimes) AS ?publication_datetime) ?work 
-    (GROUP_CONCAT(DISTINCT ?researcher_label; separator=', ') AS ?researchers)
-    (CONCAT("../authors/", GROUP_CONCAT(DISTINCT SUBSTR(STR(?researcher), 32); separator=",")) AS ?researchersUrl)
-  WHERE {                                                         
-    ?researcher ( wdt:P108 | wdt:P463 | wdt:P1416 ) / wdt:P361* wd:{{ q }} .
-    ?work wdt:P50 ?researcher .
-    ?researcher rdfs:label ?researcher_label . FILTER (LANG(?researcher_label) = 'en')
-    OPTIONAL {
-      ?work wdt:P577 ?publication_datetimes .
-    }
-  }
-  GROUP BY ?work
-  ORDER BY DESC(?publication_datetime)
-  LIMIT 200  
-} AS %results
-WHERE {
-  INCLUDE %results
-  BIND(xsd:date(?publication_datetime) AS ?publication_date)
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "en,da,de,es,fr,jp,nl,nl,ru,zh". }
-}
-ORDER BY DESC(?publication_date)
- `;
-
- recentCitationsSparql = `
- #defaultView:Table
-SELECT DISTINCT ?publication_date ?citing_work ?citing_workLabel ?work ?workLabel
-WHERE {
-  ?researcher ( wdt:P108 | wdt:P463 | wdt:P1416 ) / wdt:P361* wd:{{ q }} .
-  ?work wdt:P50 ?researcher .
-  ?citing_work wdt:P2860 ?work .
-  ?citing_work wdt:P577 ?publication_datetime .
-  BIND(xsd:date(?publication_datetime) AS ?publication_date)
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "en,da,de,es,fr,jp,nl,nl,ru,sv,zh". }
- }
-ORDER BY DESC(?publication_date)
-LIMIT 200
-`;
-
- awardsSparql = `
-SELECT ?count ?award ?awardLabel ?recipients
-WITH {
-  SELECT (COUNT(?researcher) AS ?count) ?award (GROUP_CONCAT(?researcher_label; separator=", ") AS ?recipients) WHERE {
-    hint:Query hint:optimizer "None" .
-    { 
-      SELECT DISTINCT ?researcher WHERE {
-        ?researcher ( wdt:P108 | wdt:P463 | wdt:P1416 ) / wdt:P361* wd:{{ q }} .
-      } 
-    }
-    ?researcher wdt:P166 ?award .
-    ?researcher rdfs:label ?researcher_label . FILTER (LANG(?researcher_label) = 'en')
-  }
-  GROUP BY ?award 
-} AS %result
-WHERE {
-  INCLUDE %result
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "en,da,de,es,fr,jp,nl,no,ru,sv,zh" . } 
-}
-ORDER BY DESC(?count)
-`;
-
-
- genderDistributionSparql = `
- SELECT ?count ?gender ?genderLabel 
-WITH {
-  SELECT (COUNT(DISTINCT ?researcher) AS ?count) ?gender WHERE {
-    ?researcher ( wdt:P108 | wdt:P463 | wdt:P1416 ) / wdt:P361* wd:{{ q }} .
-    ?researcher wdt:P21 ?gender . 
-  } 
-  GROUP BY ?gender
-} AS %result
-WHERE {
-  INCLUDE %result
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "en,da,de,ep,fr,jp,nl,no,ru,sv,zh" . } 
-} 
- ORDER BY DESC(?count)
- `
-
-
  $(document).ready(function() {
-     sparqlToDataTable(employeesAndAffiliatedSparql, "#employees-and-affiliated");
-     sparqlToDataTable(topicsSparql, "#topics", {
+     sparqlToDataTable({{employees_and_affiliates}}, "#employees-and-affiliated");
+     sparqlToDataTable({{topics}}, "#topics", {
 	 linkPrefixes:{
 	     "topic": "../topic/",
 	     "samplework": "../work/",
 	 }});
-     sparqlToDataTable(recentPublicationsSparql, "#recent-publications");
-     sparqlToDataTable(recentCitationsSparql, "#recent-citations");
-     sparqlToDataTable(awardsSparql, "#awards");
-     sparqlToDataTable(genderDistributionSparql, "#gender-distribution");
+     sparqlToDataTable({{recent_publications}}, "#recent-publications");
+     sparqlToDataTable({{recent_citations}}, "#recent-citations");
+     sparqlToDataTable({{awards}}, "#awards");
+     sparqlToDataTable({{gender_distribution}}, "#gender-distribution");
  });
 </script>
 

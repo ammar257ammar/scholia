@@ -21,6 +21,8 @@ from ..query import (arxiv_to_qs, cas_to_qs, atomic_symbol_to_qs, doi_to_qs,
                      pubchem_to_qs, atomic_number_to_qs)
 from ..utils import sanitize_q
 from ..wikipedia import q_to_bibliography_templates
+from pathlib import Path
+import urllib.parse
 
 
 class RegexConverter(BaseConverter):
@@ -970,7 +972,21 @@ def show_organization(q):
         Rendered HTML.
 
     """
-    return render_template('organization.html', q=q)
+    employees_and_affiliates = urllib.parse.quote(Path('sparql_templates/organization/employees_and_affiliates.rq').read_text());
+    topics = urllib.parse.quote(Path('sparql_templates/organization/topics.rq').read_text());
+    recent_publications = urllib.parse.quote(Path('sparql_templates/organization/recent_publications.rq').read_text());
+    recent_citations = urllib.parse.quote(Path('sparql_templates/organization/recent_citations.rq').read_text());
+    awards = urllib.parse.quote(Path('sparql_templates/organization/awards.rq').read_text());
+    gender_distribution = urllib.parse.quote(Path('sparql_templates/organization/gender_distribution.rq').read_text());
+    
+    return render_template('organization.html', 
+                            q=q, 
+                            employees_and_affiliates=employees_and_affiliates,
+                            topics=topics,
+                            recent_publications=recent_publications,
+                            recent_citations=recent_citations,
+                            awards=awards,
+                            gender_distribution=gender_distribution)
 
 
 @main.route('/organization/')

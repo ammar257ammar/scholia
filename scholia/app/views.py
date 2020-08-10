@@ -1481,7 +1481,33 @@ def show_topic_missing(q):
         Rendered HTML index page for topic.
 
     """
-    return render_template('topic_missing.html', q=q)
+    templates_path = '/data/scholia/app/sparql_templates/topic/';
+    
+    
+    #-------------- JQuery tables queries -----------------
+    
+    missing_author_items = Path(templates_path + 'missing_author_items.rq').read_text('utf-8');
+    missing_author_items = missing_author_items.replace("{{ q }}", q).replace("{{q}}", q);
+    
+    missing_co_topic = Path(templates_path + 'missing_co_topic.rq').read_text('utf-8');
+    missing_co_topic = missing_co_topic.replace("{{ q }}", q).replace("{{q}}", q);
+    
+    missing_pub_venue = Path(templates_path + 'missing_pub_venue.rq').read_text('utf-8');
+    missing_pub_venue = missing_pub_venue.replace("{{ q }}", q).replace("{{q}}", q);
+    
+    missing_pubdate = Path(templates_path + 'missing_pubdate.rq').read_text('utf-8');
+    missing_pubdate = missing_pubdate.replace("{{ q }}", q).replace("{{q}}", q);
+    
+    ngrams = Path(templates_path + 'ngrams.rq').read_text('utf-8');
+    ngrams = ngrams.replace("{{ q }}", q).replace("{{q}}", q);
+
+    return render_template('topic_missing.html', 
+                            q=q,
+                            missing_author_items=missing_author_items,
+                            missing_co_topic=missing_co_topic,
+                            missing_pub_venue=missing_pub_venue,
+                            missing_pubdate=missing_pubdate,
+                            ngrams=ngrams)
 
 
 @main.route('/chemical/' + q_pattern)

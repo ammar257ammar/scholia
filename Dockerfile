@@ -13,7 +13,7 @@ RUN mkdir /scholia/
 WORKDIR /scholia/
 
 
-RUN git clone https://github.com/ammar257ammar/scholia.git . 
+RUN git clone -b ext-sparql https://github.com/ammar257ammar/scholia.git . 
 RUN chmod +x startScholia.sh
 
 RUN pip3 install -r requirements.txt

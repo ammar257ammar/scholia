@@ -23,6 +23,7 @@ from ..utils import sanitize_q
 from ..wikipedia import q_to_bibliography_templates
 from pathlib import Path
 import urllib.parse
+import os
 
 
 class RegexConverter(BaseConverter):
@@ -972,13 +973,53 @@ def show_organization(q):
         Rendered HTML.
 
     """
-    employees_and_affiliates = urllib.parse.quote(Path('sparql_templates/organization/employees_and_affiliates.rq').read_text());
-    topics = urllib.parse.quote(Path('sparql_templates/organization/topics.rq').read_text());
-    recent_publications = urllib.parse.quote(Path('sparql_templates/organization/recent_publications.rq').read_text());
-    recent_citations = urllib.parse.quote(Path('sparql_templates/organization/recent_citations.rq').read_text());
-    awards = urllib.parse.quote(Path('sparql_templates/organization/awards.rq').read_text());
-    gender_distribution = urllib.parse.quote(Path('sparql_templates/organization/gender_distribution.rq').read_text());
+    templates_path = '/data/scholia/app/sparql_templates/organization/';
     
+    
+    #-------------- JQuery tables queries -----------------
+    
+    employees_and_affiliates = Path(templates_path + 'employees_and_affiliates.rq').read_text('utf-8');
+    employees_and_affiliates = employees_and_affiliates.replace("{{ q }}", q);
+    
+    topics = Path(templates_path + 'topics.rq').read_text('utf-8');
+    topics = topics.replace("{{ q }}", q);
+    
+    recent_publications = Path(templates_path + 'recent_publications.rq').read_text('utf-8');
+    recent_publications = recent_publications.replace("{{ q }}", q);
+    
+    recent_citations = Path(templates_path + 'recent_citations.rq').read_text('utf-8');
+    recent_citations = recent_citations.replace("{{ q }}", q);
+    
+    awards = Path(templates_path + 'awards.rq').read_text('utf-8');
+    awards = awards.replace("{{ q }}", q);
+    
+    gender_distribution = Path(templates_path + 'gender_distribution.rq').read_text('utf-8');
+    gender_distribution = gender_distribution.replace("{{ q }}", q);
+    
+    
+    #-------------- IFrames queries -----------------
+    
+    co_authors = Path(templates_path + 'co_authors.rq').read_text('utf-8');
+    co_authors = co_authors.replace("{{ q }}", q).replace("{{q}}", q);
+    co_authors = urllib.parse.quote(co_authors, encoding='utf-8');
+    
+    advisors = Path(templates_path + 'advisors.rq').read_text('utf-8');
+    advisors = advisors.replace("{{ q }}", q).replace("{{q}}", q);
+    advisors = urllib.parse.quote(advisors, encoding='utf-8');
+    
+    page_production = Path(templates_path + 'page_production.rq').read_text('utf-8');
+    page_production = page_production.replace("{{ q }}", q).replace("{{q}}", q);
+    page_production = urllib.parse.quote(page_production, encoding='utf-8');
+    
+    most_cited_papers = Path(templates_path + 'most_cited_papers.rq').read_text('utf-8');
+    most_cited_papers = most_cited_papers.replace("{{ q }}", q).replace("{{q}}", q);
+    most_cited_papers = urllib.parse.quote(most_cited_papers, encoding='utf-8');
+    
+    normalized_citations = Path(templates_path + 'normalized_citations.rq').read_text('utf-8');
+    normalized_citations = normalized_citations.replace("{{ q }}", q).replace("{{q}}", q);
+    normalized_citations = urllib.parse.quote(normalized_citations, encoding='utf-8');
+
+
     return render_template('organization.html', 
                             q=q, 
                             employees_and_affiliates=employees_and_affiliates,
@@ -986,7 +1027,12 @@ def show_organization(q):
                             recent_publications=recent_publications,
                             recent_citations=recent_citations,
                             awards=awards,
-                            gender_distribution=gender_distribution)
+                            gender_distribution=gender_distribution,
+                            co_authors=co_authors,
+                            advisors=advisors,
+                            page_production=page_production,
+                            most_cited_papers=most_cited_papers,
+                            normalized_citations=normalized_citations)
 
 
 @main.route('/organization/')

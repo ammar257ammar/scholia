@@ -17,7 +17,7 @@ WITH
 { # Generating a list of titles to be analyzed
   SELECT ?Title ?Publication ?Seeds ?ClearTitleLength
    { # Choosing the entities whose titles are to be analyzed
-      SERVICE bd:sample { ?Publication wdt:P921 wd:Q84263196 . bd:serviceParam bd:sample.limit 1000 }
+      SERVICE bd:sample { ?Publication wdt:P921 wd:{{q}} . bd:serviceParam bd:sample.limit 1000 }
       ?Publication wdt:P1476 ?Title.
       BIND (REPLACE(STR(?Title),"[\\\\.:,;\\\\[\\\\]()$]","") AS ?ClearTitle) # remove some frequent special characters, including colons and semicolons
       BIND(STRLEN(?ClearTitle) AS ?ClearTitleLength)
